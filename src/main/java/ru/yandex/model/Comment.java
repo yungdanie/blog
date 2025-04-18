@@ -1,18 +1,25 @@
 package ru.yandex.model;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
+
+@Table
 public class Comment {
 
+    @Id
     private Long id;
 
     private String text;
 
     private Long postId;
 
-    public Comment(Long id, String text, Long postId) {
-        this.id = id;
+    public Comment(String text, Long postId) {
         this.text = text;
         this.postId = postId;
     }
+
+    public Comment() {}
 
     public Long getId() {
         return id;

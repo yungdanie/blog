@@ -1,17 +1,23 @@
 package ru.yandex.model;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
+
+@Table
 public class Tag {
 
+    @Id
     private Long id;
 
     private String name;
 
-    private Long postId;
-
-    public Tag(Long id, String name, Long postId) {
+    public Tag(Long id, String name) {
         this.id = id;
         this.name = name;
-        this.postId = postId;
+    }
+
+    public Tag(String name) {
+        this.name = name;
     }
 
     public Tag() {}
@@ -30,13 +36,5 @@ public class Tag {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public Long getPostId() {
-        return postId;
-    }
-
-    public void setPostId(Long postId) {
-        this.postId = postId;
     }
 }
