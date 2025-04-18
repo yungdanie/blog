@@ -4,7 +4,6 @@ import org.springframework.stereotype.Service;
 import ru.yandex.model.Comment;
 import ru.yandex.repository.CommentRepository;
 
-import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -16,16 +15,12 @@ public class CommentService {
         this.commentRepository = commentRepository;
     }
 
-    public List<Comment> getByPostId(long postId) {
-        return commentRepository.getByPostId(postId);
-    }
-
     public void update(long commentId, String text) {
         if (Objects.isNull(text) || text.isEmpty()) {
             throw new IllegalArgumentException("Comment text cannot be empty");
         }
 
-        commentRepository.update(commentId, text);
+        commentRepository.updateText(commentId, text);
     }
 
     public void save(long postId, String text) {
@@ -33,10 +28,10 @@ public class CommentService {
             throw new IllegalArgumentException("Comment text cannot be empty");
         }
 
-        commentRepository.save(postId, text);
+        commentRepository.save(new Comment(text, postId));
     }
 
     public void delete(long commentId) {
-        commentRepository.delete(commentId);
+        commentRepository.deleteById(commentId);
     }
 }

@@ -1,6 +1,8 @@
 package ru.yandex.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,85 +12,82 @@ import ru.yandex.dto.PostPreview;
 import ru.yandex.exception.ImageUpdateError;
 import ru.yandex.mapper.DTOMapper;
 import ru.yandex.model.Post;
+import ru.yandex.model.Tag;
 import ru.yandex.repository.PostRepository;
-import ru.yandex.util.PageResponse;
-import ru.yandex.util.Pageable;
 import ru.yandex.util.PostPageResponse;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
 
 @Service
 public class PostService {
-
-    private final PostRepository postRepository;
-
-    private final TagService tagService;
 
     private final DTOMapper<Post, PostPreview> previewMapper;
 
     private final DTOMapper<Post, FullPost> fullPostMapper;
 
-    private final CommentService commentService;
-
     private final ImageService imageService;
+
+    private final PostRepository postRepository;
 
     @Autowired
     public PostService(
-            PostRepository postRepository,
-            TagService tagService,
             DTOMapper<Post, PostPreview> previewMapper,
             DTOMapper<Post, FullPost> fullPostMapper,
-            CommentService commentService,
-            ImageService imageService
+            ImageService imageService,
+            PostRepository postRepository
     ) {
-        this.postRepository = postRepository;
-        this.tagService = tagService;
         this.previewMapper = previewMapper;
         this.fullPostMapper = fullPostMapper;
-        this.commentService = commentService;
         this.imageService = imageService;
+        this.postRepository = postRepository;
     }
 
     public void deletePost(long postId) {
-        this.postRepository.delete(postId);
+        this.postRepository.deleteById(postId);
     }
 
     public FullPost getPost(long postId) {
-        var post = postRepository.getById(postId);
-        post.setTags(tagService.getByPostId(postId));
-        post.setComments(commentService.getByPostId(postId));
-        return fullPostMapper.map(post);
+        return fullPostMapper.map(postRepository.findById(postId).orElseThrow());
     }
 
-    public PostPageResponse getPageResponse(Long pageSize, Long pageNumber, @Nullable String search) {
+    public PostPageResponse getPageResponse(Integer pageSize, Integer pageNumber, @Nullable String search) {
         pageNumber = getPageNumberOrDefault(pageNumber);
         pageSize = getPageSizeOrDefault(pageSize);
-        PageResponse pageResponse = postRepository.get(pageSize, pageNumber, search);
-        List<Post> posts = new ArrayList<>();
 
-        if (!pageResponse.ids().isEmpty()) {
-            posts = postRepository.getByIds(pageResponse.ids());
+        Pageable pageable = PageRequest.of(pageNumber, pageSize + 1);
+        List<Post> posts = Objects.isNull(search) || search.isEmpty() ?
+                postRepository.findAllByOrderById(pageable) :
+                postRepository.findAllByTagNameOrderById(search, pageNumber * pageSize, pageSize);
+
+        boolean hasNext = posts.size() == (pageSize + 1);
+
+        if (hasNext) {
+            posts = posts.stream().sorted(Comparator.comparing(Post::getId)).collect(toList());
+            posts.removeLast();
         }
 
-        posts.forEach(post -> {
-            post.setTags(tagService.getByPostId(post.getId()));
-            post.setComments(commentService.getByPostId(post.getId()));
-        });
-
         return new PostPageResponse(
-                posts.stream().map(previewMapper::map).toList(),
-                new Pageable(pageNumber, pageSize, pageResponse.hasNext())
+                posts.stream()
+                        .map(previewMapper::map)
+                        .collect(toList()),
+                new ru.yandex.util.Pageable(pageNumber, pageSize, hasNext)
         );
     }
 
     public Long update(PostEdit postEdit, MultipartFile image) {
         Objects.requireNonNull(postEdit.getId());
 
-        postRepository.update(postEdit);
+        Post post = postRepository.findById(postEdit.getId()).orElseThrow();
+
+        post.setText(postEdit.getText());
+        post.setTitle(postEdit.getTitle());
 
         try {
             imageService.replacePostImage(postEdit.getId(), image.getBytes());
@@ -96,9 +95,13 @@ public class PostService {
             throw new ImageUpdateError();
         }
 
-        tagService.deleteByPostId(postEdit.getId());
-        Arrays.stream(postEdit.getTags().split(" "))
-                .forEach(tagName -> tagService.save(tagName, postEdit.getId()));
+        post.setTags(
+                Arrays.stream(postEdit.getTags().split(" "))
+                        .map(Tag::new)
+                        .collect(Collectors.toSet())
+        );
+
+        postRepository.save(post);
 
         return postEdit.getId();
     }
@@ -124,28 +127,33 @@ public class PostService {
             throw new IllegalArgumentException();
         }
 
-        Long postId = postRepository.save(post);
+        Post newPost = new Post();
 
-        if (Objects.isNull(postId)) {
-            throw new RuntimeException("Error saving post");
-        }
+        newPost.setTitle(post.getTitle());
+        newPost.setText(post.getText());
+
+        newPost.setTags(
+                Arrays.stream(post.getTags().split(" "))
+                        .map(Tag::new)
+                        .collect(Collectors.toSet())
+        );
+
+        postRepository.save(newPost);
 
         try {
-            imageService.replacePostImage(postId, image.getBytes());
+            imageService.replacePostImage(newPost.getId(), image.getBytes());
         } catch (IOException e) {
             throw new ImageUpdateError();
         }
 
-        Arrays.stream(post.getTags().split(" ")).forEach(tagName -> tagService.save(tagName, postId));
-
-        return postId;
+        return newPost.getId();
     }
 
-    private long getPageNumberOrDefault(Long pageNumber) {
-        return Objects.isNull(pageNumber) || pageNumber < 0 ? 1 : pageNumber;
+    private int getPageNumberOrDefault(Integer pageNumber) {
+        return Objects.isNull(pageNumber) || pageNumber < 0 ? 0 : pageNumber;
     }
 
-    private long getPageSizeOrDefault(Long pageSize) {
-        return Objects.isNull(pageSize) || pageSize < 0 ? 10 : pageSize;
+    private int getPageSizeOrDefault(Integer pageSize) {
+        return Objects.isNull(pageSize) || pageSize <= 0 ? 10 : pageSize;
     }
 }
