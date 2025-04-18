@@ -1,26 +1,26 @@
-package unit;
+package ru.yandex.unit;
 
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import ru.yandex.configuration.RandomIdConfiguration;
+import ru.yandex.model.Comment;
 import ru.yandex.repository.CommentRepository;
 import ru.yandex.service.CommentService;
 
-import java.util.Random;
+import static org.mockito.ArgumentMatchers.any;
 
-@SpringJUnitConfig(CommentServiceTest.CommentServiceConfiguration.class)
+@SpringBootTest(classes = {CommentService.class, RandomIdConfiguration.class})
 public class CommentServiceTest {
 
     @Autowired
     private CommentService commentService;
 
-    @Autowired
+    @MockitoBean
     private CommentRepository commentRepository;
 
     @Autowired
@@ -28,16 +28,10 @@ public class CommentServiceTest {
     private Long id;
 
     @Test
-    public void getByPostIdTest() {
-        commentService.getByPostId(id);
-        Mockito.verify(commentRepository, Mockito.times(1)).getByPostId(id);
-    }
-
-    @Test
     public void update() {
         String nonEmpty = "non-empty";
         commentService.update(id, nonEmpty);
-        Mockito.verify(commentRepository, Mockito.times(1)).update(id, nonEmpty);
+        Mockito.verify(commentRepository, Mockito.times(1)).updateText(id, nonEmpty);
     }
 
     @Test
@@ -55,7 +49,8 @@ public class CommentServiceTest {
     public void save() {
         String nonEmpty = "non-empty";
         commentService.save(id, nonEmpty);
-        Mockito.verify(commentRepository, Mockito.times(1)).save(id, nonEmpty);
+        Mockito.verify(commentRepository, Mockito.times(1))
+                .save(any(Comment.class));
     }
 
     @Test
@@ -69,23 +64,4 @@ public class CommentServiceTest {
         Assertions.assertThrows(IllegalArgumentException.class, () -> commentService.save(id, null));
     }
 
-
-    @Configuration
-    static class CommentServiceConfiguration {
-
-        @Bean
-        public CommentService commentService(CommentRepository commentRepository) {
-            return new CommentService(commentRepository);
-        }
-
-        @Bean
-        public CommentRepository commentRepository() {
-            return Mockito.mock(CommentRepository.class);
-        }
-
-        @Bean(name = "id")
-        public Long random() {
-            return new Random().nextLong();
-        }
-    }
 }

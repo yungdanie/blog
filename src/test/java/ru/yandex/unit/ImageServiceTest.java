@@ -1,24 +1,22 @@
-package unit;
+package ru.yandex.unit;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import ru.yandex.configuration.RandomIdConfiguration;
 import ru.yandex.repository.ImageRepository;
 import ru.yandex.service.ImageService;
 
-import java.util.Random;
-
-@SpringJUnitConfig(ImageServiceTest.ImageServiceConfiguration.class)
+@SpringBootTest(classes = {ImageService.class, RandomIdConfiguration.class})
 public class ImageServiceTest {
 
     @Autowired
     private ImageService imageService;
 
-    @Autowired
+    @MockitoBean
     private ImageRepository imageRepository;
 
     @Autowired
@@ -36,25 +34,5 @@ public class ImageServiceTest {
         var bytes = new byte[] {};
         imageService.replacePostImage(id, bytes);
         Mockito.verify(imageRepository, Mockito.times(1)).replacePostImage(id, bytes);
-    }
-
-    @Configuration
-    static class ImageServiceConfiguration {
-
-        @Bean
-        public ImageService getImageService(ImageRepository imageRepository) {
-            return new ImageService(imageRepository);
-        }
-
-        @Bean
-        public ImageRepository getImageRepository() {
-            return Mockito.mock(ImageRepository.class);
-        }
-
-        @Bean(name = "id")
-        public Long random() {
-            return new Random().nextLong();
-        }
-
     }
 }

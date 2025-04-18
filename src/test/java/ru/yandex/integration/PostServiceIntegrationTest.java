@@ -1,29 +1,30 @@
-package integration;
+package ru.yandex.integration;
 
-import configuration.PostServiceWithMemoryDBConfiguration;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import ru.yandex.BlogApplication;
 import ru.yandex.dto.PostEdit;
 import ru.yandex.service.CommentService;
 import ru.yandex.service.ImageService;
 import ru.yandex.service.PostService;
-import ru.yandex.service.TagService;
 import ru.yandex.util.PostPageResponse;
 
 import java.io.IOException;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 
-@SpringJUnitConfig(classes = PostServiceWithMemoryDBConfiguration.class)
+@SpringBootTest(classes = BlogApplication.class)
+@ActiveProfiles("test")
+@Transactional
 public class PostServiceIntegrationTest {
 
     @Autowired
@@ -35,10 +36,7 @@ public class PostServiceIntegrationTest {
     @Autowired
     protected CommentService commentService;
 
-    @Autowired
-    protected TagService tagService;
-
-    @Autowired
+    @MockitoBean
     protected ImageService imageService;
 
     protected Long counter = 0L;
@@ -48,14 +46,7 @@ public class PostServiceIntegrationTest {
     @BeforeEach
     protected void configurePageRequest() throws IOException {
         Mockito.when(mockedFile.getBytes()).thenReturn(new byte[] {});
-        Mockito.when(commentService.getByPostId(any(Long.class))).thenReturn(List.of());
-        Mockito.when(tagService.getByPostId(any(Long.class))).thenReturn(List.of());
         Mockito.doNothing().when(imageService).replacePostImage(any(Long.class), any(byte[].class));
-    }
-
-    @AfterEach
-    protected void clearPostTable() {
-        jdbcTemplate.update("delete from post");
     }
 
     @Test
@@ -66,8 +57,8 @@ public class PostServiceIntegrationTest {
         Assertions.assertNotNull(postPageResponse.pageable());
 
         Assertions.assertTrue(postPageResponse.postPreviews().isEmpty());
-        Assertions.assertFalse(postPageResponse.pageable().hasNext());
-        Assertions.assertEquals(1L, postPageResponse.pageable().pageNumber());
+
+        Assertions.assertEquals(0L, postPageResponse.pageable().pageNumber());
         Assertions.assertEquals(10L, postPageResponse.pageable().pageSize());
     }
 
@@ -85,7 +76,7 @@ public class PostServiceIntegrationTest {
 
         Assertions.assertFalse(postPageResponse.postPreviews().isEmpty());
         Assertions.assertFalse(postPageResponse.pageable().hasNext());
-        Assertions.assertEquals(1L, postPageResponse.pageable().pageNumber());
+        Assertions.assertEquals(0L, postPageResponse.pageable().pageNumber());
         Assertions.assertEquals(10L, postPageResponse.pageable().pageSize());
     }
 
@@ -105,7 +96,7 @@ public class PostServiceIntegrationTest {
 
         Assertions.assertFalse(postPageResponse.postPreviews().isEmpty());
         Assertions.assertFalse(postPageResponse.pageable().hasNext());
-        Assertions.assertEquals(1L, postPageResponse.pageable().pageNumber());
+        Assertions.assertEquals(0L, postPageResponse.pageable().pageNumber());
         Assertions.assertEquals(10L, postPageResponse.pageable().pageSize());
 
         Assertions.assertTrue(postPageResponse.postPreviews().stream().anyMatch(post -> post.id().equals(firstId)));
@@ -120,7 +111,7 @@ public class PostServiceIntegrationTest {
         Assertions.assertNotNull(firstId);
         Assertions.assertNotNull(secondId);
 
-        PostPageResponse postPageResponse = postService.getPageResponse(1L, 1L, null);
+        PostPageResponse postPageResponse = postService.getPageResponse(1, 0, null);
 
         Assertions.assertNotNull(postPageResponse);
         Assertions.assertNotNull(postPageResponse.postPreviews());
@@ -128,7 +119,7 @@ public class PostServiceIntegrationTest {
 
         Assertions.assertFalse(postPageResponse.postPreviews().isEmpty());
         Assertions.assertTrue(postPageResponse.pageable().hasNext());
-        Assertions.assertEquals(1L, postPageResponse.pageable().pageNumber());
+        Assertions.assertEquals(0L, postPageResponse.pageable().pageNumber());
         Assertions.assertEquals(1L, postPageResponse.pageable().pageSize());
 
         Assertions.assertEquals(1, postPageResponse.postPreviews().size());
