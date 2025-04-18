@@ -15,7 +15,6 @@
 **Backend:**
 - Spring Data JDBC
 - Spring MVC
-- Hibernate
 - Junit5
 
 **Frontend:**
@@ -47,7 +46,10 @@
    - spring.datasource.password
 3. Сборка
    ```
-   ./mvnw clean package
+   ./gradlew clean build 
    ```
-   Готовый архив лежит в ./target/
-4. Развертывание в контейнер сервлетов (например Tomcat)
+   Готовый архив лежит в ./build/libs
+4. Архив уже настроен для запуска, выполните
+   ```
+   ./build/libs/{имя_пакета}
+   ```
