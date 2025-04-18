@@ -23,8 +23,8 @@ public class PostController {
 
     @GetMapping
     public String getPosts(
-            @RequestParam(name = "pageNumber", required = false) Long pageNumber,
-            @RequestParam(name = "pageSize", required = false) Long pageSize,
+            @RequestParam(name = "pageNumber", required = false) Integer pageNumber,
+            @RequestParam(name = "pageSize", required = false) Integer pageSize,
             @RequestParam(name = "search", required = false) String search,
             Model model
     ) {
